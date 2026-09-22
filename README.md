@@ -1,439 +1,29 @@
-# JobRail
+# JobRail JavaScript SDK
 
-JobRail is a **Redis-backed background job queue built with Rust**.
+TypeScript SDK for [JobRail](https://github.com/YOUR_USERNAME/jobrail).
 
-It provides the infrastructure needed to reliably create, schedule,
-execute, retry, and monitor background jobs through a Rust API and
-worker system.
+JobRail is a **Redis-backed background job queue built with Rust**,
+designed for reliable background processing with retries, delays,
+scheduling, repeatable jobs, priorities, idempotency, and worker-based
+execution.
 
-> **Status:** JobRail is currently under active development and has
-> **not been deployed yet**. It currently runs locally / self-hosted.
-
----
-
-## Architecture
-
-```text
-                         ┌──────────────────┐
-                         │   Application    │
-                         └────────┬─────────┘
-                                  │
-                                  │ HTTP
-                                  ▼
-                         ┌──────────────────┐
-                         │    Axum API      │
-                         └────────┬─────────┘
-                                  │
-                                  ▼
-                         ┌──────────────────┐
-                         │      Redis       │
-                         │                  │
-                         │  Waiting         │
-                         │  Prioritized     │
-                         │  Delayed         │
-                         │  Scheduled       │
-                         │  Active          │
-                         │  Processing      │
-                         └────────┬─────────┘
-                                  │
-                                  ▼
-                         ┌──────────────────┐
-                         │     Worker       │
-                         └────────┬─────────┘
-                                  │
-                                  ▼
-                         ┌──────────────────┐
-                         │   Job Handler    │
-                         └──────────────────┘
-```
-
-JobRail separates the **API that accepts jobs** from the **workers that
-execute them**.
-
-This allows job producers and job consumers to scale independently.
+> **Status:** JobRail is currently under active development and is not
+> deployed yet. The SDK currently works with a locally running JobRail
+> API.
 
 ---
 
-## Features
-
-### Job Processing
-
-- Job creation
-- Job states
-- State transitions
-- Redis-backed queues
-- Worker concurrency
-- Atomic job claiming
-- Job execution
-- Job completion
-- Job failure handling
-
-### Reliability
-
-- At-least-once delivery
-- Lease-based job ownership
-- Lease renewal
-- Expired-job recovery
-- Atomic Redis operations
-- Lua scripts for state transitions
-
-### Retries
-
-- Configurable maximum attempts
-- Retry scheduling
-- Exponential backoff
-- Delayed retries
-- Manual retry of failed jobs
-
-### Scheduling
-
-- Delayed jobs
-- Scheduled jobs
-- Scheduled-job promotion
-- Repeatable jobs
-- Repeatable-job scheduler
-
-### Job History
-
-- Attempt tracking
-- Attempt status
-- Attempt start timestamps
-- Attempt finish timestamps
-- Attempt errors
-
-### Job Controls
-
-- Cancel jobs
-- Retry failed jobs
-- Inspect attempts
-- List jobs
-- Filter jobs by state
-- Cursor-based pagination
-
----
-
-## Idempotency
-
-JobRail supports **idempotency keys** to prevent duplicate logical job
-creation.
-
-```text
-Application
-     │
-     │ idempotencyKey
-     ▼
-  JobRail
-     │
-     ├── Existing job ──► Return existing job
-     │
-     └── New job ───────► Create job
-```
-
-An idempotency key allows a client to safely retry a request without
-accidentally creating the same logical job multiple times.
-
----
-
-## Project Structure
-
-```text
-jobrail/
-├── Cargo.toml
-│
-├── crates/
-│   ├── core/
-│   │   └── Job models and domain logic
-│   │
-│   ├── jobrail-redis/
-│   │   └── Redis storage and queue operations
-│   │
-│   ├── worker/
-│   │   └── Background workers and schedulers
-│   │
-│   ├── axum-api/
-│   │   └── HTTP API
-│   │
-│   └── cli/
-│       └── CLI utilities
-│
-├── examples/
-│   └── API examples
-│
-└── README.md
-```
-
----
-
-# Getting Started
-
-## Requirements
-
-Before running JobRail locally, make sure you have:
-
-- [Rust](https://www.rust-lang.org/)
-- Cargo
-- Redis
-- Docker (optional)
-
----
-
-## Start Redis
-
-### Run Redis locally
-
-```bash
-redis-server
-```
-
-### Or run Redis with Docker
-
-```bash
-docker run --name jobrail-redis \
-  -p 6379:6379 \
-  -d redis
-```
-
-Verify that Redis is running:
-
-```bash
-redis-cli ping
-```
-
-Expected output:
-
-```text
-PONG
-```
-
----
-
-# Run JobRail
-
-## Run the API
-
-From the JobRail repository:
-
-```bash
-cargo run -p axum-api
-```
-
-The API runs at:
-
-```text
-http://localhost:3001
-```
-
----
-
-## Run the Worker
-
-In another terminal:
-
-```bash
-cargo run -p jobrail-worker
-```
-
-The worker connects to Redis and waits for jobs to execute.
-
----
-
-## Run the Scheduled Job Scheduler
-
-For scheduled jobs:
-
-```bash
-cargo run -p jobrail-worker --bin scheduled_scheduler
-```
-
----
-
-## Run the Repeatable Job Scheduler
-
-For repeatable jobs:
-
-```bash
-cargo run -p jobrail-worker --bin repeatable_scheduler
-```
-
----
-
-## Local Development Setup
-
-A typical local development setup uses five terminals:
-
-```text
-Terminal 1
-──────────
-Redis
-
-Terminal 2
-──────────
-Axum API
-
-Terminal 3
-──────────
-Worker
-
-Terminal 4
-──────────
-Scheduled Scheduler
-
-Terminal 5
-──────────
-Repeatable Scheduler
-```
-
----
-
-# API
-
-The current API is available under:
-
-```text
-/v1
-```
-
-## Jobs
-
-Method Endpoint Description
-
----
-
-`POST` `/v1/jobs` Create a job
-`GET` `/v1/jobs` List jobs
-`GET` `/v1/jobs/{id}` Get a job
-`POST` `/v1/jobs/{id}/cancel` Cancel a job
-`POST` `/v1/jobs/{id}/retry` Retry a failed job
-`GET` `/v1/jobs/{id}/attempts` Get job attempts
-
-## Repeatable Jobs
-
----
-
-Method Endpoint Description
-
----
-
-`POST` `/v1/repeatable-jobs` Create a repeatable job
-
-`GET` `/v1/repeatable-jobs` List repeatable jobs
-
-`GET` `/v1/repeatable-jobs/{id}` Get a repeatable job
-
-`DELETE` `/v1/repeatable-jobs/{id}` Delete a repeatable job
-
-`POST` `/v1/repeatable-jobs/{id}/disable` Disable a repeatable
-job
-
----
-
----
-
-# Create a Job
-
-```bash
-curl -X POST http://localhost:3001/v1/jobs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "send-email",
-    "payload": {
-      "to": "user@example.com"
-    }
-  }'
-```
-
-### Example Response
-
-```json
-{
-  "id": "job-id",
-  "name": "send-email",
-  "state": "Waiting",
-  "attemptsMade": 0,
-  "attemptsStarted": 0,
-  "runAt": null
-}
-```
-
----
-
-# Delayed Job
-
-A delayed job starts after a specified delay.
-
-```bash
-curl -X POST http://localhost:3001/v1/jobs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "send-reminder",
-    "payload": {
-      "userId": "123"
-    },
-    "delayMs": 10000
-  }'
-```
-
-The job will become available for execution after `10,000` milliseconds.
-
----
-
-# Scheduled Job
-
-A scheduled job runs at a specific timestamp.
-
-```bash
-curl -X POST http://localhost:3001/v1/jobs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "generate-report",
-    "payload": {
-      "reportId": "123"
-    },
-    "runAt": 1800000000000
-  }'
-```
-
-`runAt` is a Unix timestamp in milliseconds and must be in the future.
-
----
-
-# Repeatable Job
-
-Repeatable jobs execute according to a configured schedule.
-
-```bash
-curl -X POST http://localhost:3001/v1/repeatable-jobs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "cleanup",
-    "payload": {
-      "type": "cleanup"
-    },
-    "schedule": {
-      "EveryMillis": 60000
-    }
-  }'
-```
-
-The example above runs the job every `60,000` milliseconds.
-
----
-
-# TypeScript SDK
-
-JobRail also provides a separate TypeScript SDK:
-
-```text
-jobrail-js
-```
-
-Install it with:
+## Installation
 
 ```bash
 npm install jobrail
 ```
 
-## Create a Client
+---
+
+# Quick Start
+
+Create a JobRail client:
 
 ```typescript
 import { JobRail } from "jobrail";
@@ -442,6 +32,40 @@ const client = new JobRail({
   baseUrl: "http://localhost:3001",
 });
 ```
+
+Create a job:
+
+```typescript
+const job = await client.jobs.create({
+  name: "send-email",
+  payload: {
+    to: "user@example.com",
+    subject: "Welcome!",
+  },
+});
+
+console.log(job);
+```
+
+The SDK communicates with the JobRail API over HTTP.
+
+```text
+Your application
+       │
+       │ jobrail-js
+       ▼
+JobRail API
+       │
+       ▼
+    Redis
+       │
+       ▼
+   Workers
+```
+
+---
+
+# Jobs
 
 ## Create a Job
 
@@ -454,308 +78,378 @@ const job = await client.jobs.create({
 });
 ```
 
-The SDK communicates with the JobRail HTTP API.
+## Get a Job
 
-```text
-Application
-     │
-     │ jobrail-js
-     ▼
-┌─────────────────┐
-│    Axum API     │
-└────────┬────────┘
-         │
-         ▼
-       Redis
-         │
-         ▼
-      Worker
+```typescript
+const job = await client.jobs.get(jobId);
+
+console.log(job);
 ```
 
----
+## List Jobs
 
-# Reliability Model
+```typescript
+const result = await client.jobs.list({
+  limit: 20,
+});
 
-JobRail is designed around **at-least-once job delivery**.
+console.log(result.jobs);
+```
 
-A worker claims a job using a lease and ownership token.
+## Filter Jobs by State
+
+```typescript
+const result = await client.jobs.list({
+  state: "Failed",
+  limit: 20,
+});
+
+console.log(result.jobs);
+```
+
+Supported job states include:
 
 ```text
 Waiting
-   │
-   │ claim
-   ▼
- Active
-   │
-   ├──── success ────► Completed
-   │
-   └──── failure ────► Retry / Failed
+Prioritized
+Delayed
+Scheduled
+Active
+Completed
+Failed
+Cancelled
 ```
 
-If a worker crashes while processing a job, its lease can expire.
+## Cancel a Job
 
-The recovery process can then make the job available for another worker.
+```typescript
+const job = await client.jobs.cancel(jobId);
 
-This means job handlers should be designed to safely handle repeated
-execution when necessary.
+console.log(job.state);
+```
+
+## Retry a Job
+
+Retry a failed job:
+
+```typescript
+const job = await client.jobs.retry(jobId);
+```
+
+## Get Attempt History
+
+```typescript
+const result = await client.jobs.attempts(jobId);
+
+console.log(result.attempts);
+```
+
+Each attempt contains information such as:
+
+```typescript
+{
+  attempt: 1,
+  startedAt: 1720000000000,
+  finishedAt: 1720000005000,
+  status: "Failed",
+  error: "Something went wrong"
+}
+```
 
 ---
 
-# Leases and Worker Ownership
+# Delayed Jobs
 
-A lease gives a worker temporary ownership of a job.
+Delay a job before it becomes eligible for execution:
 
-```text
-Worker A
-   │
-   │ claims job
-   ▼
-Job
-   │
-   │ lease expires
-   ▼
-Recovery
-   │
-   ▼
-Worker B
+```typescript
+const job = await client.jobs.create({
+  name: "send-reminder",
+  payload: {
+    userId: "123",
+  },
+  delayMs: 10_000,
+});
 ```
 
-JobRail also uses an ownership token to protect against stale workers.
-
-For example:
-
-```text
-Worker A
-token = ABC
-
-Worker B
-token = XYZ
-```
-
-If Worker A's lease expires and Worker B claims the job, the current
-token becomes `XYZ`.
-
-Worker A can no longer modify the job using the old token:
-
-```text
-ABC != XYZ
-
-→ Worker A is stale
-→ Operation is rejected
-```
-
-This provides **stale-worker protection**.
+`delayMs` is specified in milliseconds.
 
 ---
 
-# Redis and Atomic Operations
+# Scheduled Jobs
 
-Redis stores queue membership and job metadata.
+Schedule a job for a specific future timestamp:
 
-JobRail uses **Lua scripts** for operations that require multiple Redis
-commands to behave atomically.
-
-For example, claiming a job may involve:
-
-```text
-Claim Job
-   │
-   ├── Verify job is available
-   │
-   ├── Move job to active
-   │
-   ├── Create ownership lease
-   │
-   └── Update job state
+```typescript
+const job = await client.jobs.create({
+  name: "generate-report",
+  payload: {
+    reportId: "123",
+  },
+  runAt: Date.now() + 60_000,
+});
 ```
 
-These operations need to happen as a single atomic operation so multiple
-workers cannot incorrectly claim the same job.
+`runAt` must be a future Unix timestamp in milliseconds.
 
-Conceptually:
+---
+
+# Priority
+
+Jobs can have a priority value:
+
+```typescript
+const job = await client.jobs.create({
+  name: "important-job",
+  payload: {},
+  priority: 10,
+});
+```
+
+---
+
+# Retries
+
+Configure how many attempts a job can make:
+
+```typescript
+const job = await client.jobs.create({
+  name: "send-email",
+  payload: {
+    to: "user@example.com",
+  },
+  maxAttempts: 5,
+});
+```
+
+JobRail handles retry scheduling on the worker side.
+
+---
+
+# Idempotency
+
+Provide an idempotency key when repeated submissions should represent
+the same logical job:
+
+```typescript
+const job = await client.jobs.create({
+  name: "process-payment",
+  payload: {
+    paymentId: "payment_123",
+  },
+  idempotencyKey: "payment_123",
+});
+```
+
+An idempotency key allows the same logical job to be safely submitted
+again without unintentionally creating duplicate jobs.
+
+---
+
+# Repeatable Jobs
+
+Create a job that runs repeatedly:
+
+```typescript
+const repeatableJob = await client.repeatableJobs.create({
+  name: "cleanup",
+  payload: {
+    type: "cleanup",
+  },
+  schedule: {
+    EveryMillis: 60_000,
+  },
+});
+```
+
+## List Repeatable Jobs
+
+```typescript
+const result = await client.repeatableJobs.list();
+
+console.log(result.jobs);
+```
+
+## Get a Repeatable Job
+
+```typescript
+const job = await client.repeatableJobs.get(repeatableJobId);
+
+console.log(job);
+```
+
+## Disable a Repeatable Job
+
+```typescript
+await client.repeatableJobs.disable(repeatableJobId);
+```
+
+## Delete a Repeatable Job
+
+```typescript
+await client.repeatableJobs.delete(repeatableJobId);
+```
+
+---
+
+# Error Handling
+
+JobRail exposes structured API errors through `JobRailError`:
+
+```typescript
+import { JobRail, JobRailError } from "jobrail";
+
+const client = new JobRail({
+  baseUrl: "http://localhost:3001",
+});
+
+try {
+  await client.jobs.get("invalid-id");
+} catch (error) {
+  if (error instanceof JobRailError) {
+    console.log(error.code);
+    console.log(error.message);
+    console.log(error.status);
+  }
+}
+```
+
+An error contains:
+
+```typescript
+error.code;
+error.message;
+error.status;
+```
+
+---
+
+# Local Development
+
+The JobRail API currently runs locally during development.
+
+Start the JobRail API from the JobRail Rust repository:
+
+```bash
+cargo run -p axum-api
+```
+
+The API runs on:
 
 ```text
-                Redis
-                  │
-                  ▼
-            Lua Script
-                  │
-       ┌──────────┼──────────┐
-       │          │          │
-    Verify      Move       Update
-    Job         Job        State
-       │          │          │
-       └──────────┼──────────┘
-                  │
-                  ▼
-               Atomic
+http://localhost:3001
+```
+
+Then configure the SDK:
+
+```typescript
+const client = new JobRail({
+  baseUrl: "http://localhost:3001",
+});
 ```
 
 ---
 
 # Development
 
-## Format the Workspace
+Clone the repository and install dependencies:
 
 ```bash
-cargo fmt --all
+git clone https://github.com/YOUR_USERNAME/jobrail-js.git
+cd jobrail-js
+npm install
 ```
 
-## Check the Workspace
+## Typecheck
 
 ```bash
-cargo check --workspace
+npm run typecheck
 ```
 
-## Run All Tests
+## Build
 
 ```bash
-cargo test --workspace
+npm run build
 ```
 
-## Check Formatting
+The build generates:
+
+```text
+dist/
+├── index.js
+└── index.d.ts
+```
+
+## Tests
 
 ```bash
-cargo fmt --all -- --check
+npm test
+```
+
+The integration tests can be run against a locally running JobRail API.
+
+```text
+jobrail-js
+    │
+    │ HTTP
+    ▼
+localhost:3001
+    │
+    ▼
+JobRail Axum API
+    │
+    ▼
+Redis
 ```
 
 ---
 
-# Testing
+# API Coverage
 
-JobRail contains tests covering:
+The SDK currently exposes the following functionality.
 
-- Queue behavior
-- Scheduling
-- Retries
-- Attempts
-- Repeatable jobs
-- API behavior
+## Jobs
 
-Run all tests:
-
-```bash
-cargo test --workspace
-```
-
-Run the API integration tests:
-
-```bash
-cargo test -p axum-api --test api
-```
-
----
-
-# Current Status
-
-JobRail is currently an **open-source project under active
-development**.
-
-## Currently Implemented
-
-- Redis-backed queues
-- Workers
-- Worker concurrency
-- Job lifecycle
-- Retries
-- Exponential backoff
+- Create jobs
+- Get jobs
+- List jobs
+- Filter jobs
+- Cancel jobs
+- Retry jobs
+- Get attempt history
 - Delayed jobs
 - Scheduled jobs
-- Repeatable jobs
-- Leases
-- Lease renewal
-- Expired-job recovery
-- Attempt history
-- Idempotency
-- Job cancellation
-- Job retry
-- Job listing
-- Cursor pagination
-- State filtering
-- Axum API
-- TypeScript SDK
-- API integration tests
+- Priority
+- Maximum attempts
+- Idempotency keys
 
-> **Deployment:** JobRail has not been deployed yet and currently runs
-> locally / self-hosted.
+## Repeatable Jobs
+
+- Create repeatable jobs
+- Get repeatable jobs
+- List repeatable jobs
+- Disable repeatable jobs
+- Delete repeatable jobs
 
 ---
 
-# Planned
+# Project Status
 
-The following features are planned for later:
+JobRail is currently under active development.
 
-- Production deployment
-- Authentication
-- API keys
-- Organizations
-- Projects
-- Usage metering
-- Billing
-- Cloud dashboard
-- Managed infrastructure
-- Autoscaling
-- High availability
-- JobRail Cloud control plane
+The current SDK is designed to work with a **self-hosted or locally
+running JobRail API**.
 
----
-
-# Roadmap
-
-## Public OSS
-
-Feature Status
-
----
-
-- Core queue engine ✅
-- Redis storage ✅
-- Workers ✅
-- Retries ✅
-- Scheduling ✅
-- Repeatable jobs ✅
-- Leases & recovery ✅
-- Attempts ✅
-- Axum API ✅
-- API integration tests ✅
-- TypeScript SDK ✅
-- Documentation 🚧
-- Examples 🚧
-- CI ⏳
-- Production deployment ⏳
-
-## JobRail Cloud
-
-Feature Status
-
----
-
-- Authentication ⏳
-- Organizations ⏳
-- Projects ⏳
-- API keys ⏳
-- Usage metering ⏳
-- Billing ⏳
-- Cloud dashboard ⏳
-- Managed infrastructure ⏳
-- Autoscaling ⏳
-- High availability ⏳
+Deployment, authentication, API keys, organizations, billing, usage
+metering, and the JobRail Cloud control plane are planned for later
+stages of the project.
 
 ---
 
 # License
 
-JobRail is released under the [MIT License](LICENSE).
+MIT
 
----
-
-# Quick Checks
-
-From the `jobrail` repository:
-
-```bash
-cargo fmt --all
-cargo check --workspace
-cargo test --workspace
-cargo fmt --all -- --check
+```text
+GauravNardia
 ```
